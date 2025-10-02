@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Grocery.Core.Interfaces.Services;
 using Grocery.Core.Models;
@@ -9,13 +9,25 @@ namespace Grocery.App.ViewModels
     public partial class GroceryListViewModel : BaseViewModel
     {
         public ObservableCollection<GroceryList> GroceryLists { get; set; }
-        private readonly IGroceryListService _groceryListService;
+        public ObservableCollection<Client> Clients { get; set; }
 
-        public GroceryListViewModel(IGroceryListService groceryListService) 
+        [ObservableProperty]
+        private Client currentClient;
+
+
+        private readonly IGroceryListService _groceryListService;
+        private readonly IClientService _clientService;
+
+        public GroceryListViewModel(IGroceryListService groceryListService, IClientService clientService)
         {
             Title = "Boodschappenlijst";
             _groceryListService = groceryListService;
+            _clientService = clientService;
             GroceryLists = new(_groceryListService.GetAll());
+            Clients = new(_clientService.GetAll());
+
+            var email = Preferences.Get("UserEmail", string.Empty);
+            CurrentClient = Clients.FirstOrDefault(c => c.EmailAddress == email);
         }
 
         [RelayCommand]
@@ -34,6 +46,16 @@ namespace Grocery.App.ViewModels
         {
             base.OnDisappearing();
             GroceryLists.Clear();
+        }
+        [RelayCommand]
+        public async Task ShowBoughtProducts()
+        {
+            var email = Preferences.Get("UserEmail", string.Empty);
+            var currentClientRole = _clientService.Get(email);
+            if (currentClientRole?.UserRole == Client.Role.Admin)
+            {
+                await Shell.Current.GoToAsync(nameof(Views.BoughtProductsView));
+            }
         }
     }
 }
